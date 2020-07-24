@@ -17,6 +17,9 @@ type Server struct {
 	waitLivenessTime  time.Duration
 	waitReadinessTime time.Duration
 	jobDuration       time.Duration
+	isReadinessEqualLiveness bool
+	maxReadinessCount int
+	currReadinessCount int
 }
 
 func main() {
@@ -31,6 +34,7 @@ func main() {
 	http.HandleFunc("/startupProbe", s.startupProbe)
 	http.HandleFunc("/livenessProbe", s.livenessProbe)
 	http.HandleFunc("/readinessProbe", s.readinessProbe)
+	http.HandleFunc("/maxReadinessCountProbe", s.maxReadinessCountProbe)
 	http.HandleFunc("/startJob", s.startJob)
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),
@@ -40,8 +44,9 @@ func main() {
 
 	// Start time
 	s.t = time.Now()
+	s.currReadinessCount = 0
 
-	fmt.Printf("Starting server. Listening on port: %d", s.port)
+	fmt.Printf("Starting server. Listening on port: %d\n", s.port)
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -50,6 +55,22 @@ func getEnvToDuration(e string) (d time.Duration, err error) {
 	envValue, err = strconv.Atoi(os.Getenv(e))
 	d = time.Duration(envValue) * time.Second
 	return
+}
+
+func getEnvToInt(e string) (int, error) {
+	envValue, err := strconv.Atoi(os.Getenv(e))
+	if err == nil {
+		return envValue, nil
+	}
+	return -1, err
+}
+
+func getEnvToBool(e string) (bool, error) {
+	boolVal, err := strconv.ParseBool(os.Getenv(e))
+	if err == nil {
+		return boolVal, nil
+	}
+	return false, err
 }
 
 func (s *Server) getEnvValues() (err error) {
@@ -69,6 +90,16 @@ func (s *Server) getEnvValues() (err error) {
 	if err != nil {
 		return
 	}
+
+	s.isReadinessEqualLiveness, err = getEnvToBool("IS_READINESS_EQUALS_LIVENESS")
+	log.Println("isReadinessEqualLiveness: ", s.isReadinessEqualLiveness)
+
+	s.maxReadinessCount, err = getEnvToInt("MAX_READINESS_COUNT")
+	if err != nil {
+		return
+	}
+	log.Println("maxReadinessCount: ", s.maxReadinessCount)
+
 	return
 }
 
@@ -83,16 +114,34 @@ func (s *Server) startupProbe(w http.ResponseWriter, r *http.Request) {
 func (s *Server) livenessProbe(w http.ResponseWriter, r *http.Request) {
 	if time.Since(s.t) > s.waitLivenessTime {
 		w.WriteHeader(200)
+		log.Println("liveness 200 OK")
 	} else {
 		w.WriteHeader(503)
+		log.Println("liveness 503 NOK")
+	}
+}
+
+func (s *Server) maxReadinessCountProbe(w http.ResponseWriter, r *http.Request) {
+	if s.currReadinessCount >= s.maxReadinessCount {
+		w.WriteHeader(503)
+		log.Println("currReadinessCount >= s.maxReadinessCount 503 NOK")
+	} else {
+		s.currReadinessCount++
+		w.WriteHeader(200)
+		log.Println("currReadinessCount < s.maxReadinessCount 200 OK")
 	}
 }
 
 func (s *Server) readinessProbe(w http.ResponseWriter, r *http.Request) {
-	if time.Since(s.t) > s.waitReadinessTime && time.Since(s.jobStart) > s.jobDuration {
+	if s.isReadinessEqualLiveness && (time.Since(s.t) > s.waitLivenessTime) {
 		w.WriteHeader(200)
+		log.Println("readiness == liveness 200 OK")
+	} else if time.Since(s.t) > s.waitReadinessTime && time.Since(s.jobStart) > s.jobDuration {
+		w.WriteHeader(200)
+		log.Println("readiness > jobduration 200 OK")
 	} else {
 		w.WriteHeader(503)
+		log.Println("readiness 503 NOK")
 	}
 }
 

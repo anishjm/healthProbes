@@ -32,13 +32,15 @@ RUN CGO_ENABLED=0 go build \
 ## Final stage - Containerization of the application
 ##
 FROM alpine AS final
-LABEL maintainer="r.vanderheide@wearetriple.com"
+LABEL maintainer="r.vanderheide@wearetriple.com, anishjm"
 
 # Setting default values
-ENV WAIT_STARTUP_TIME 30
-ENV WAIT_LIVENESS_TIME 60
-ENV WAIT_READINESS_TIME 90
-ENV JOB_DURATION_TIME 20
+ENV WAIT_STARTUP_TIME 10
+ENV WAIT_LIVENESS_TIME 25
+ENV WAIT_READINESS_TIME 300
+ENV JOB_DURATION_TIME 5
+ENV MAX_READINESS_COUNT 2
+ENV IS_READINESS_EQUALS_LIVENESS false
 
 # Import the compiled executable from the first stage.
 COPY --from=builder /app /app
