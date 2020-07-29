@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: health-probes-sts
-  namespace: testenv
   labels:
     app: health-probes-sts
 spec:
@@ -10,6 +9,7 @@ spec:
     matchLabels:
       app: health-probes
   serviceName: health-probe-svc
+  podManagementPolicy: "Parallel"
   updateStrategy:
     type: RollingUpdate
   template:
@@ -26,6 +26,7 @@ spec:
                 operator: In
                 values:
                 - health-probes
+            topologyKey: "kubernetes.io/hostname"    
       restartPolicy: Always
       containers:
         - name: health-probe

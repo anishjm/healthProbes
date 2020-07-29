@@ -10,16 +10,16 @@ import (
 )
 
 type Server struct {
-	port              int
-	t                 time.Time
-	jobStart          time.Time
-	waitStartupTime   time.Duration
-	waitLivenessTime  time.Duration
-	waitReadinessTime time.Duration
-	jobDuration       time.Duration
+	port                     int
+	t                        time.Time
+	jobStart                 time.Time
+	waitStartupTime          time.Duration
+	waitLivenessTime         time.Duration
+	waitReadinessTime        time.Duration
+	jobDuration              time.Duration
 	isReadinessEqualLiveness bool
-	maxReadinessCount int
-	currReadinessCount int
+	maxReadinessCount        int
+	currReadinessCount       int
 }
 
 func main() {
